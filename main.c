@@ -34,7 +34,6 @@ int main(int argc, char* argv[]) {
     size_t bytesRead = fread(ram_buffer, 1, fileSize, myfile);
     if (bytesRead != fileSize) {
         fprintf(stderr, "Failed to read the entire file\n");
-        free(ram_buffer);
         fclose(myfile);
         exit(EXIT_FAILURE);
     }
