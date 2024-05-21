@@ -43,6 +43,9 @@ int cycle(void) {
 	cpu_state.execute = cpu_state.decode;
 	cpu_state.decode = cpu_state.fetch;
 
+	if (cpu_state.halted)
+		return 1;
+
 	return 0;
 }
 
@@ -219,23 +222,35 @@ int memory(void) {
 		case 0: case 1: case 2: case 3:
 			break;
 		case 4:
+			if (cpu_state.memory.valE > RAM_SIZE - 4)
+				return -1;
 			write_ram(cpu_state.memory.valE, cpu_state.memory.valA);
 			break;
 		case 5:
+			if (cpu_state.memory.valE > RAM_SIZE - 4)
+				return -1;
 			cpu_state.memory.valM = read_ram(cpu_state.memory.valE);
 			break;
 		case 6: case 7:
 			break;
 		case 8:
+			if (cpu_state.memory.valE > RAM_SIZE - 4)
+				return -1;
 			write_ram(cpu_state.memory.valE, cpu_state.memory.instruction_data.valP);
 			break;
 		case 9:
+			if (cpu_state.memory.valA > RAM_SIZE - 4)
+				return -1;
 			cpu_state.memory.valM = read_ram(cpu_state.memory.valA);
 			break;
 		case 0xa:
+			if (cpu_state.memory.valE > RAM_SIZE - 4)
+				return -1;
 			write_ram(cpu_state.memory.valE, cpu_state.memory.valA);
 			break;
 		case 0xb:
+			if (cpu_state.memory.valB > RAM_SIZE - 4)
+				return -1;
 			cpu_state.memory.valM = read_ram(cpu_state.memory.valB);
 			break;
 	}

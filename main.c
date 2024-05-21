@@ -42,6 +42,29 @@ int main(int argc, char* argv[]) {
 
 	init_cpu();
 
+	// Cycle the CPU pipeline
+	int cycle_result = 0;
+	while (cycle_result <= 0) {
+		cycle_result = cycle();
+		switch (cycle_result) {
+			case -5:
+				printf("EXCEPTION: Writeback error\r\n");
+				break;
+			case -4:
+				printf("EXCEPTION: Memory access out of bounds (>0x%x)\r\n", RAM_SIZE);
+				break;
+			case -3:
+				printf("EXCEPTION: Invalid instruction flag\r\n");
+				break;
+			case -2:
+				printf("EXCEPTION: Invalid register\r\n");
+				break;
+			case -1:
+				printf("EXCEPTION: Bad instruction code\r\n");
+				break;
+		}
+	}
+
 	// Close the file
 	fclose(myfile);
 
