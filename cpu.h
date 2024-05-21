@@ -3,17 +3,30 @@
 
 #include <stdint.h>
 
-// Instruction data
 typedef struct {
-	uint8_t icode;
-	uint8_t ifun;
-	int rega;
-	int regb;
-	int valc;
-} instruction_t;
+	uint64_t newPC;
+	uint64_t valM;
+	uint64_t valE;
+	uint64_t valA;
+	uint64_t valB;
+	uint64_t cnd;
+	struct {
+		uint64_t valC;
+		uint64_t valP;
+		uint8_t icode;
+		uint8_t ifun;
+		uint8_t regA;
+		uint8_t regB;
+	} instruction_data;
+	struct {
+		uint8_t zf;
+		uint8_t sf;
+		uint8_t of;
+	} eflags;
+} state;
 
 // Initialize CPU
-void init_cpu();
+void init_cpu(void);
 
 // Cycle through stages
 // Return a negative number if there is an exception
@@ -21,18 +34,18 @@ void init_cpu();
 int cycle(void);
 
 // Fetch
-int fetch(instruction_t*);
+int fetch(void);
 
 // Decode
-int decode(instruction_t*);
+int decode(void);
 
 // Execute
-int execute(instruction_t*);
+int execute(void);
 
 // Memory
-int memory(instruction_t*);
+int memory(void);
 
 // Write back
-int writeback(instruction_t*);
+int writeback(void);
 
 #endif
