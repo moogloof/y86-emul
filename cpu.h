@@ -23,7 +23,22 @@ typedef struct {
 		uint8_t sf;
 		uint8_t of;
 	} eflags;
+	uint8_t stalling;
+	uint8_t req_unstall;
 } state;
+
+typedef struct {
+	uint64_t registers[8];
+	uint64_t pc; // Program counter
+	state fetch;
+	state decode;
+	state execute;
+	state memory;
+	state writeback;
+	uint8_t halted; // Just a flag to see if halted or not
+	uint8_t branch_mispredict;
+	uint8_t register_locks[8];
+} cpu_state_t;
 
 // Initialize CPU
 void init_cpu(void);
