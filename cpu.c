@@ -25,6 +25,7 @@ void init_cpu(void) {
 
 // Cycle through stages
 int cycle(void) {
+	// Run pipeline
 	if (writeback() < 0)
 		return -5;
 	if (memory() < 0)
@@ -35,6 +36,12 @@ int cycle(void) {
 		return -2;
 	if (fetch() < 0)
 		return -1;
+
+	// Move pipeline
+	cpu_state.writeback = cpu_state.memory;
+	cpu_state.memory = cpu_state.execute;
+	cpu_state.execute = cpu_state.decode;
+	cpu_state.decode = cpu_state.fetch;
 
 	return 0;
 }
@@ -47,25 +54,27 @@ int fetch(void) {
 	cpu_state.fetch.instruction_data.regA = 0xf;
 	cpu_state.fetch.instruction_data.regB = 0xf;
 
+	cpu_state.fetch.instruction_data.valP = cpu_state.pc;
+
 	switch (cpu_state.fetch.instruction_data.icode) {
 		case 0: case 1:
-			cpu_state.fetch.instruction_data.valP = cpu_state.pc + 1;
+			cpu_state.fetch.instruction_data.valP += 1;
 			break;
 		case 2:
 			cpu_state.fetch.instruction_data.regA = ram_buffer[cpu_state.pc + 1] >> 4;
 			cpu_state.fetch.instruction_data.regB = ram_buffer[cpu_state.pc + 1] & 0xf;
-			cpu_state.fetch.instruction_data.valP = cpu_state.pc + 2;
+			cpu_state.fetch.instruction_data.valP += 2;
 			break;
 		case 3: case 4: case 5:
 			cpu_state.fetch.instruction_data.regA = ram_buffer[cpu_state.pc + 1] >> 4;
 			cpu_state.fetch.instruction_data.regB = ram_buffer[cpu_state.pc + 1] & 0xf;
 			cpu_state.fetch.instruction_data.valC = read_ram(cpu_state.pc + 2);
-			cpu_state.fetch.instruction_data.valP = cpu_state.pc + 10;
+			cpu_state.fetch.instruction_data.valP += 10;
 			break;
 		case 6:
 			cpu_state.fetch.instruction_data.regA = ram_buffer[cpu_state.pc + 1] >> 4;
 			cpu_state.fetch.instruction_data.regB = ram_buffer[cpu_state.pc + 1] & 0xf;
-			cpu_state.fetch.instruction_data.valP = cpu_state.pc + 2;
+			cpu_state.fetch.instruction_data.valP += 2;
 			if (cpu_state.fetch.instruction_data.ifun > 3)
 				return -1;
 			break;
@@ -79,14 +88,14 @@ int fetch(void) {
 			cpu_state.fetch.instruction_data.regB = 4;
 			break;
 		case 9:
-			cpu_state.fetch.instruction_data.valP = cpu_state.pc + 1;
 			cpu_state.fetch.instruction_data.regA = 4;
 			cpu_state.fetch.instruction_data.regB = 4;
+			cpu_state.fetch.instruction_data.valP += 1;
 			break;
 		case 0xa: case 0xb:
 			cpu_state.fetch.instruction_data.regA = ram_buffer[cpu_state.pc + 1] >> 4;
 			cpu_state.fetch.instruction_data.regB = 4;
-			cpu_state.fetch.instruction_data.valP = cpu_state.pc + 2;
+			cpu_state.fetch.instruction_data.valP += 2;
 			break;
 		default:
 			return -1;
@@ -144,10 +153,7 @@ int execute(void) {
 	int do_write;
 
 	switch (cpu_state.execute.instruction_data.icode) {
-		case 0:
-			cpu_state.halted = 1;
-			break;
-		case 1:
+		case 0: case 1:
 			break;
 		case 2:
 			do_write = check_flag(cpu_state.execute.instruction_data.ifun, cpu_state.execute.eflags.zf, cpu_state.execute.eflags.sf, cpu_state.execute.eflags.of);
@@ -239,7 +245,10 @@ int memory(void) {
 
 int writeback(void) {
 	switch (cpu_state.writeback.instruction_data.icode) {
-		case 0: case 1:
+		case 0:
+			cpu_state.halted = 1;
+			break;
+		case 1:
 			break;
 		case 2: case 3:
 			cpu_state.registers[cpu_state.writeback.instruction_data.regB] = cpu_state.writeback.valE;
