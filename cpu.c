@@ -5,14 +5,7 @@ extern char* ram_buffer;
 
 // CPU State
 struct {
-	uint64_t rax; // Rest are general registers
-	uint64_t rcx;
-	uint64_t rdx;
-	uint64_t rbx;
-	uint64_t rsp; // Stack registers
-	uint64_t rbp;
-	uint64_t rsi;
-	uint64_t rdi;
+	uint64_t registers[8];
 	uint64_t pc; // Program counter
 	state fetch;
 	state decode;
@@ -42,6 +35,8 @@ int cycle(void) {
 		return -2;
 	if (fetch() < 0)
 		return -1;
+
+	return 0;
 }
 
 // Fetch
@@ -104,7 +99,7 @@ int fetch(void) {
 int decode(void) {
 	if (cpu_state.decode.instruction_data.regA != 0xf) {
 		if (cpu_state.decode.instruction_data.regA < 8) {
-			cpu_state.decode.valA = ((uint64_t*)cpu_state)[cpu_state.decode.instruction_data.regA];
+			cpu_state.decode.valA = cpu_state.registers[cpu_state.decode.instruction_data.regA];
 		} else {
 			return -1;
 		}
@@ -112,7 +107,7 @@ int decode(void) {
 
 	if (cpu_state.decode.instruction_data.regB != 0xf) {
 		if (cpu_state.decode.instruction_data.regA < 8) {
-			cpu_state.decode.valB = ((uint64_t*)cpu_state)[cpu_state.decode.instruction_data.regB];
+			cpu_state.decode.valB = cpu_state.registers[cpu_state.decode.instruction_data.regB];
 		} else {
 			return -1;
 		}
@@ -121,8 +116,33 @@ int decode(void) {
 	return 0;
 }
 
+// Helper for the flags
+static int check_flag(uint8_t flag, uint8_t cpu_zf, uint8_t cpu_sf, uint8_t cpu_of) {
+	// Check for flags
+	switch (cpu_state.execute.instruction_data.ifun) {
+		case 0:
+			return 1;
+		case 1:
+			return cpu_zf || cpu_sf != cpu_of;
+		case 2:
+			return !cpu_zf && cpu_sf != cpu_of;
+		case 3:
+			return cpu_zf;
+		case 4:
+			return !cpu_zf;
+		case 5:
+			return cpu_zf || cpu_sf == cpu_of;
+		case 6:
+			return !cpu_zf && cpu_sf == cpu_of;
+		default:
+			return -1;
+	}
+}
+
 // Execute
 int execute(void) {
+	int do_write;
+
 	switch (cpu_state.execute.instruction_data.icode) {
 		case 0:
 			cpu_state.halted = 1;
@@ -130,41 +150,11 @@ int execute(void) {
 		case 1:
 			break;
 		case 2:
-			int do_write = 0;
+			do_write = check_flag(cpu_state.execute.instruction_data.ifun, cpu_state.execute.eflags.zf, cpu_state.execute.eflags.sf, cpu_state.execute.eflags.of);
 
-			switch (cpu_state.execute.instruction_data.ifun) {
-				case 0:
-					do_write = 1;
-					break;
-				case 1:
-					if (cpu_state.execute.eflags.zf || cpu_state.execute.eflags.sf != cpu_state.execute.eflags.of)
-						do_write = 1;
-					break;
-				case 2:
-					if (!cpu_state.execute.eflags.zf && cpu_state.execute.eflags.sf != cpu_state.execute.eflags.of)
-						do_write = 1;
-					break;
-				case 3:
-					if (cpu_state.execute.eflags.zf)
-						do_write = 1;
-					break;
-				case 4:
-					if (!cpu_state.execute.eflags.zf)
-						do_write = 1;
-					break;
-				case 5:
-					if (cpu_state.execute.eflags.zf || cpu_state.execute.eflags.sf == cpu_state.execute.eflags.of)
-						do_write = 1;
-					break;
-				case 6:
-					if (!cpu_state.execute.eflags.zf && cpu_state.execute.eflags.sf == cpu_state.execute.eflags.of)
-						do_write = 1;
-					break;
-				default:
-					return -1;
-			}
-
-			if (do_write)
+			if (do_write < 0)
+				return -1;
+			else if (do_write)
 				cpu_state.execute.valE = cpu_state.execute.valA;
 
 			break;
@@ -195,31 +185,11 @@ int execute(void) {
 			cpu_state.execute.eflags.of = cpu_state.execute.eflags.sf != (cpu_state.execute.valB >> 63);
 			break;
 		case 7:
-			switch (cpu_state.execute.instruction_data.ifun) {
-				case 0:
-					cpu_state.execute.cnd = 1;
-					break;
-				case 1:
-					cpu_state.execute.cnd = cpu_state.execute.eflags.zf || cpu_state.execute.eflags.sf != cpu_state.execute.eflags.of;
-					break;
-				case 2:
-					cpu_state.execute.cnd = !cpu_state.execute.eflags.zf && cpu_state.execute.eflags.sf != cpu_state.execute.eflags.of;
-					break;
-				case 3:
-					cpu_state.execute.cnd = cpu_state.execute.eflags.zf;
-					break;
-				case 4:
-					cpu_state.execute.cnd = !cpu_state.execute.eflags.zf;
-					break;
-				case 5:
-					cpu_state.execute.cnd = cpu_state.execute.eflags.zf || cpu_state.execute.eflags.sf == cpu_state.execute.eflags.of;
-					break;
-				case 6:
-					cpu_state.execute.cnd = !cpu_state.execute.eflags.zf && cpu_state.execute.eflags.sf == cpu_state.execute.eflags.of;
-					break;
-				default:
-					return -1;
-			}
+			cpu_state.execute.cnd = check_flag(cpu_state.execute.instruction_data.ifun, cpu_state.execute.eflags.zf, cpu_state.execute.eflags.sf, cpu_state.execute.eflags.of);
+
+			if (cpu_state.execute.cnd < 0)
+				return -1;
+
 			break;
 		case 8:
 			cpu_state.execute.valE = cpu_state.execute.valB - 4;
@@ -251,7 +221,7 @@ int memory(void) {
 		case 6: case 7:
 			break;
 		case 8:
-			write_ram(cpu_state.memory.valE, cpu_state.memory.valP);
+			write_ram(cpu_state.memory.valE, cpu_state.memory.instruction_data.valP);
 			break;
 		case 9:
 			cpu_state.memory.valM = read_ram(cpu_state.memory.valA);
@@ -263,6 +233,8 @@ int memory(void) {
 			cpu_state.memory.valM = read_ram(cpu_state.memory.valB);
 			break;
 	}
+
+	return 0;
 }
 
 int writeback(void) {
@@ -270,24 +242,26 @@ int writeback(void) {
 		case 0: case 1:
 			break;
 		case 2: case 3:
-			((uint64_t*)cpu_state)[cpu_state.writeback.instruction_data.regB] = cpu_state.writeback.valE;
+			cpu_state.registers[cpu_state.writeback.instruction_data.regB] = cpu_state.writeback.valE;
 			break;
 		case 4:
 			break;
 		case 5:
-			((uint64_t*)cpu_state)[cpu_state.writeback.instruction_data.regA] = cpu_state.writeback.valM;
+			cpu_state.registers[cpu_state.writeback.instruction_data.regA] = cpu_state.writeback.valM;
 			break;
 		case 6:
-			((uint64_t*)cpu_state)[cpu_state.writeback.instruction_data.regB] = cpu_state.writeback.valE;
+			cpu_state.registers[cpu_state.writeback.instruction_data.regB] = cpu_state.writeback.valE;
 			break;
 		case 7:
 			break;
 		case 8: case 9: case 0xa:
-			cpu_state.rsp = cpu_state.writeback.valE;
+			cpu_state.registers[4] = cpu_state.writeback.valE;
 			break;
 		case 0xb:
-			cpu_state.rsp = cpu_state.writeback.valE;
-			((uint64_t*)cpu_state)[cpu_state.writeback.instruction_data.regA] = cpu_state.writeback.valM;
+			cpu_state.registers[4] = cpu_state.writeback.valE;
+			cpu_state.registers[cpu_state.writeback.instruction_data.regA] = cpu_state.writeback.valM;
 			break;
 	}
+
+	return 0;
 }
