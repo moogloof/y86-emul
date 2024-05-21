@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,7 +9,7 @@
 
 void hexDump(size_t, void *, int);
 
-extern char* ram_buffer;
+extern uint8_t ram_buffer[RAM_SIZE];
 extern cpu_state_t cpu_state;
 
 char* register_name[16];
@@ -116,6 +117,8 @@ int main(int argc, char* argv[]) {
 				printf("HALTED\r\n");
 				break;
 		}
+
+		sleep(1);
 	}
 
 	// Close the file

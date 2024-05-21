@@ -2,7 +2,7 @@
 #include <ram.h>
 #include <string.h>
 
-extern char* ram_buffer;
+extern uint8_t ram_buffer[RAM_SIZE];
 
 // CPU State
 cpu_state_t cpu_state;
@@ -10,6 +10,13 @@ cpu_state_t cpu_state;
 // Initialize CPU
 void init_cpu(void) {
 	memset(&cpu_state, 0, sizeof(cpu_state));
+
+	// all nops at first
+	cpu_state.fetch.instruction_data.icode = 1;
+	cpu_state.decode.instruction_data.icode = 1;
+	cpu_state.execute.instruction_data.icode = 1;
+	cpu_state.memory.instruction_data.icode = 1;
+	cpu_state.writeback.instruction_data.icode = 1;
 }
 
 // Cycle through stages
@@ -82,12 +89,14 @@ int cycle(void) {
 	}
 
 	// Run pipeline
+/*
 	if (writeback() < 0)
 		return -5;
 	if (memory() < 0)
 		return -4;
 	if (execute() < 0)
 		return -3;
+*/
 	if (decode() < 0)
 		return -2;
 	if (fetch() < 0)

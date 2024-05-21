@@ -1,9 +1,10 @@
 #include <ram.h>
+#include <stdint.h>
 
 // Memory buffer
 // 1 MiB of memory
 // 2^20 bytes of memory
-char ram_buffer[RAM_SIZE];
+uint8_t ram_buffer[RAM_SIZE];
 
 // Read quad from memory
 uint64_t read_ram(uint64_t addr) {
