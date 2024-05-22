@@ -11,7 +11,7 @@ uint64_t read_ram(uint64_t addr) {
 	uint64_t read_word = 0;
 
 	for (int i = 0; i < sizeof(uint64_t); i++)
-		read_word += ram_buffer[addr + i] << (i * 8);
+		read_word += (uint64_t)(ram_buffer[addr + i]) << (i * 8);
 
 	return read_word;
 }
