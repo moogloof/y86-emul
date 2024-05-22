@@ -19,5 +19,5 @@ uint64_t read_ram(uint64_t addr) {
 // Write quad to memory
 void write_ram(uint64_t addr, uint64_t val) {
 	for (int i = 0; i < sizeof(uint64_t); i++)
-		ram_buffer[addr + i] = (char)(0xff & (val >> (i * 8)));
+		ram_buffer[addr + i] = (uint8_t)(0xff & (val >> (i * 8)));
 }

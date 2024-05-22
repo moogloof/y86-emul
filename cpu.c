@@ -164,7 +164,6 @@ int fetch(void) {
 		case 9:
 			cpu_state.fetch.instruction_data.valP += 1;
 			cpu_state.pc = cpu_state.fetch.instruction_data.valP;
-			cpu_state.fetch.stalling = 1;
 			break;
 		case 0xa: case 0xb:
 			cpu_state.fetch.instruction_data.regA = ram_buffer[old_cpu_state.pc + 1] >> 4;
@@ -190,6 +189,8 @@ int decode(void) {
 		case 9:
 			cpu_state.decode.instruction_data.regA = 4;
 			cpu_state.decode.instruction_data.regB = 4;
+			cpu_state.fetch = bubble_state;
+			cpu_state.fetch.stalling = 1;
 			break;
 		case 0xa: case 0xb:
 			cpu_state.decode.instruction_data.regB = 4;
@@ -333,16 +334,16 @@ int execute(void) {
 
 			break;
 		case 8:
-			cpu_state.execute.valE = cpu_state.execute.valB - 4;
+			cpu_state.execute.valE = cpu_state.execute.valB - 8;
 			break;
 		case 9:
-			cpu_state.execute.valE = cpu_state.execute.valB + 4;
+			cpu_state.execute.valE = cpu_state.execute.valB + 8;
 			break;
 		case 0xa:
-			cpu_state.execute.valE = cpu_state.execute.valB - 4;
+			cpu_state.execute.valE = cpu_state.execute.valB - 8;
 			break;
 		case 0xb:
-			cpu_state.execute.valE = cpu_state.execute.valB + 4;
+			cpu_state.execute.valE = cpu_state.execute.valB + 8;
 			break;
 	}
 
@@ -354,36 +355,36 @@ int memory(void) {
 		case 0: case 1: case 2: case 3:
 			break;
 		case 4:
-			if (cpu_state.memory.valE > RAM_SIZE - 4)
+			if (cpu_state.memory.valE > RAM_SIZE - 8)
 				return -1;
 			write_ram(cpu_state.memory.valE, cpu_state.memory.valA);
 			break;
 		case 5:
-			if (cpu_state.memory.valE > RAM_SIZE - 4)
+			if (cpu_state.memory.valE > RAM_SIZE - 8)
 				return -1;
 			cpu_state.memory.valM = read_ram(cpu_state.memory.valE);
 			break;
 		case 6: case 7:
 			break;
 		case 8:
-			if (cpu_state.memory.valE > RAM_SIZE - 4)
+			if (cpu_state.memory.valE > RAM_SIZE - 8)
 				return -1;
 			write_ram(cpu_state.memory.valE, cpu_state.memory.instruction_data.valP);
 			break;
 		case 9:
-			if (cpu_state.memory.valA > RAM_SIZE - 4)
+			if (cpu_state.memory.valA > RAM_SIZE - 8)
 				return -1;
 			cpu_state.memory.valM = read_ram(cpu_state.memory.valA);
 			cpu_state.pc = cpu_state.memory.valM;
 			cpu_state.fetch.stalling = 0;
 			break;
 		case 0xa:
-			if (cpu_state.memory.valE > RAM_SIZE - 4)
+			if (cpu_state.memory.valE > RAM_SIZE - 8)
 				return -1;
 			write_ram(cpu_state.memory.valE, cpu_state.memory.valA);
 			break;
 		case 0xb:
-			if (cpu_state.memory.valB > RAM_SIZE - 4)
+			if (cpu_state.memory.valB > RAM_SIZE - 8)
 				return -1;
 			cpu_state.memory.valM = read_ram(cpu_state.memory.valB);
 			break;
