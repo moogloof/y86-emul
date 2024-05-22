@@ -33,7 +33,8 @@ void init_cpu(void) {
 // Cycle through stages
 int cycle(void) {
 	// Handle branch misprediction
-	if (old_cpu_state.branch_mispredict) {
+	if (cpu_state.branch_mispredict) {
+		printf("CPU LOG :: Handling branch mispredict, bubbling fetch and decode, updating PC\r\n");
 		cpu_state.branch_mispredict = 0;
 		cpu_state.fetch = bubble_state;
 		cpu_state.decode = bubble_state;
@@ -286,7 +287,7 @@ int execute(void) {
 		case 0: case 1:
 			break;
 		case 2:
-			do_write = check_flag(cpu_state.execute.instruction_data.ifun, cpu_state.execute.eflags.zf, cpu_state.execute.eflags.sf, cpu_state.execute.eflags.of);
+			do_write = check_flag(cpu_state.execute.instruction_data.ifun, cpu_state.eflags.zf, cpu_state.eflags.sf, cpu_state.eflags.of);
 
 			if (do_write < 0)
 				return -1;
@@ -316,17 +317,18 @@ int execute(void) {
 					break;
 			}
 
-			cpu_state.execute.eflags.zf = cpu_state.execute.valE == 0;
-			cpu_state.execute.eflags.sf = cpu_state.execute.valE >> 63;
-			cpu_state.execute.eflags.of = cpu_state.execute.eflags.sf != (cpu_state.execute.valB >> 63);
+			cpu_state.eflags.zf = cpu_state.execute.valE == 0;
+			cpu_state.eflags.sf = cpu_state.execute.valE >> 63;
+			cpu_state.eflags.of = cpu_state.eflags.sf != (cpu_state.execute.valB >> 63);
 			break;
 		case 7:
-			cpu_state.execute.cnd = check_flag(cpu_state.execute.instruction_data.ifun, cpu_state.execute.eflags.zf, cpu_state.execute.eflags.sf, cpu_state.execute.eflags.of);
+			cpu_state.execute.cnd = check_flag(cpu_state.execute.instruction_data.ifun, cpu_state.eflags.zf, cpu_state.eflags.sf, cpu_state.eflags.of);
 
 			if (cpu_state.execute.cnd < 0)
 				return -1;
 			else if (!cpu_state.execute.cnd) {
 				cpu_state.branch_mispredict = 1;
+				printf("CPU LOG :: Branch mispredict detected, will be handled in next cycle\r\n");
 			}
 
 			break;

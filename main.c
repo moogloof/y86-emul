@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
 		printf("    %%rsp = %" PRIx64 "\r\n", cpu_state.registers[4]);
 		printf("EXECUTE:\r\n");
 		printf("    valE = %" PRIx64 "\r\n", cpu_state.execute.valE);
-		printf("    CC   = {ZF = %1x, SF = %1x, OF = %1x}\r\n", cpu_state.execute.eflags.zf, cpu_state.execute.eflags.sf, cpu_state.execute.eflags.of);
+		printf("    CC   = {ZF = %1x, SF = %1x, OF = %1x}\r\n", cpu_state.eflags.zf, cpu_state.eflags.sf, cpu_state.eflags.of);
 		printf("MEMORY:\r\n");
 		printf("    valM = %" PRIx64 "\r\n", cpu_state.memory.valM);
 		printf("WRITEBACK:\r\n");

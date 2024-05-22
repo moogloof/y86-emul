@@ -18,11 +18,6 @@ typedef struct {
 		uint8_t regA;
 		uint8_t regB;
 	} instruction_data;
-	struct {
-		uint8_t zf;
-		uint8_t sf;
-		uint8_t of;
-	} eflags;
 	uint8_t stalling;
 } state;
 
@@ -37,6 +32,11 @@ typedef struct {
 	uint8_t halted; // Just a flag to see if halted or not
 	uint8_t branch_mispredict;
 	uint8_t register_locks[8];
+	struct {
+		uint8_t zf;
+		uint8_t sf;
+		uint8_t of;
+	} eflags;
 } cpu_state_t;
 
 // Initialize CPU
