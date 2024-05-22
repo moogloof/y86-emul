@@ -24,7 +24,6 @@ typedef struct {
 		uint8_t of;
 	} eflags;
 	uint8_t stalling;
-	uint8_t req_unstall;
 } state;
 
 typedef struct {

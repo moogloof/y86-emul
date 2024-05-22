@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
 
 	// Cycle the CPU pipeline
 	int cycle_result = 0;
-	while (cycle_result <= 0) {
+	while (cycle_result == 0) {
 		cycle_result = cycle();
 		printf("---------------------\r\n");
 		printf("FETCH:\r\n");
@@ -117,6 +117,7 @@ int main(int argc, char* argv[]) {
 				printf("HALTED\r\n");
 				break;
 		}
+		printf("---------------------\r\n");
 
 		sleep(1);
 	}
