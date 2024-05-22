@@ -187,6 +187,7 @@ int decode(void) {
 			cpu_state.decode.instruction_data.regB = 4;
 			break;
 		case 9:
+			printf("CPU LOG :: Ret instruction detected, bubbling and stalling fetch\r\n");
 			cpu_state.decode.instruction_data.regA = 4;
 			cpu_state.decode.instruction_data.regB = 4;
 			cpu_state.fetch = bubble_state;
@@ -374,6 +375,7 @@ int memory(void) {
 		case 9:
 			if (cpu_state.memory.valA > RAM_SIZE - 8)
 				return -1;
+			printf("CPU LOG :: Successfully ran ret, updating PC, unstalling fetch\r\n");
 			cpu_state.memory.valM = read_ram(cpu_state.memory.valA);
 			cpu_state.pc = cpu_state.memory.valM;
 			cpu_state.fetch.stalling = 0;
