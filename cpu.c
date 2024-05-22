@@ -32,28 +32,64 @@ void init_cpu(void) {
 
 // Cycle through stages
 int cycle(void) {
-	memcpy(&old_cpu_state, &cpu_state, sizeof(cpu_state_t));
-
+	// Handle branch misprediction
 	if (old_cpu_state.branch_mispredict) {
 		cpu_state.branch_mispredict = 0;
+		cpu_state.fetch = bubble_state;
 		cpu_state.decode = bubble_state;
-		cpu_state.execute = bubble_state;
+		cpu_state.pc = cpu_state.execute.instruction_data.valP;
 	}
 
-	// Run pipeline
-	if (writeback() < 0)
-		return -5;
-	if (memory() < 0)
-		return -4;
-	if (execute() < 0)
-		return -3;
-	int decode_output = decode();
-	if (decode_output < 0)
-		return -2;
-	else if (decode_output == 1)
-		return 0;
-	if (fetch() < 0)
-		return -1;
+	memcpy(&old_cpu_state, &cpu_state, sizeof(cpu_state_t));
+
+	// Move the pipeline
+	if (cpu_state.decode.stalling) {
+		// Handling stalling at decode stage
+		cpu_state.writeback = cpu_state.memory;
+		cpu_state.memory = cpu_state.execute;
+		cpu_state.execute = bubble_state;
+
+		if (writeback() < 0)
+			return -5;
+		if (memory() < 0)
+			return -4;
+		if (execute() < 0)
+			return -3;
+		if (decode() < 0)
+			return -2;
+	} else if (cpu_state.fetch.stalling) {
+		// Handling stalling at fetch stage
+		cpu_state.writeback = cpu_state.memory;
+		cpu_state.memory = cpu_state.execute;
+		cpu_state.execute = cpu_state.decode;
+		cpu_state.decode = bubble_state;
+
+		if (writeback() < 0)
+			return -5;
+		if (memory() < 0)
+			return -4;
+		if (execute() < 0)
+			return -3;
+		if (decode() < 0)
+			return -2;
+	} else {
+		cpu_state.writeback = cpu_state.memory;
+		cpu_state.memory = cpu_state.execute;
+		cpu_state.execute = cpu_state.decode;
+		cpu_state.decode = cpu_state.fetch;
+
+		// Run pipeline
+		if (writeback() < 0)
+			return -5;
+		if (memory() < 0)
+			return -4;
+		if (execute() < 0)
+			return -3;
+		if (decode() < 0)
+			return -2;
+		if (fetch() < 0)
+			return -1;
+	}
 
 	if (cpu_state.halted)
 		return 1;
@@ -63,16 +99,6 @@ int cycle(void) {
 
 // Fetch
 int fetch(void) {
-	if (old_cpu_state.fetch.stalling) {
-		if (!old_cpu_state.decode.stalling)
-			cpu_state.decode = bubble_state;
-
-		return 0;
-	}
-
-	// Input to next part of pipeline
-	cpu_state.decode = cpu_state.fetch;
-
 	cpu_state.fetch.instruction_data.icode = ram_buffer[old_cpu_state.pc] >> 4;
 	cpu_state.fetch.instruction_data.ifun = ram_buffer[old_cpu_state.pc] & 0xf;
 
@@ -156,54 +182,33 @@ int fetch(void) {
 
 // Decode
 int decode(void) {
-	// Input to next part of pipeline
-	if (!old_cpu_state.decode.stalling)
-		cpu_state.execute = cpu_state.decode;
-	else
-		cpu_state.execute = bubble_state;
-
-	switch (old_cpu_state.decode.instruction_data.icode) {
-		case 2: case 3:
-			cpu_state.register_locks[cpu_state.fetch.instruction_data.regB] = 1;
-			break;
-		case 5:
-			cpu_state.register_locks[cpu_state.fetch.instruction_data.regA] = 1;
-			break;
-		case 6:
-			cpu_state.register_locks[cpu_state.fetch.instruction_data.regB] = 1;
-			break;
+	switch (cpu_state.decode.instruction_data.icode) {
 		case 8:
 			cpu_state.decode.instruction_data.regB = 4;
-			cpu_state.register_locks[4] = 1;
 			break;
 		case 9:
 			cpu_state.decode.instruction_data.regA = 4;
 			cpu_state.decode.instruction_data.regB = 4;
-			cpu_state.register_locks[4] = 1;
 			break;
 		case 0xa: case 0xb:
 			cpu_state.decode.instruction_data.regB = 4;
-			cpu_state.register_locks[4] = 1;
 			break;
 	}
 
-	if (old_cpu_state.decode.instruction_data.regA != 0xf) {
-		if (old_cpu_state.decode.instruction_data.regA < 8) {
-			if (old_cpu_state.register_locks[old_cpu_state.decode.instruction_data.regA]) {
+	if (cpu_state.decode.instruction_data.regA != 0xf) {
+		if (cpu_state.decode.instruction_data.regA < 8) {
+			if (old_cpu_state.register_locks[cpu_state.decode.instruction_data.regA]) {
 				cpu_state.decode.stalling = 1;
-				cpu_state.fetch.stalling = 1;
 
 				printf("CPU LOG :: Stalling at decode stage\r\n");
 
 				return 1;
 			} else {
-				cpu_state.decode.valA = old_cpu_state.registers[old_cpu_state.decode.instruction_data.regA];
+				cpu_state.decode.valA = old_cpu_state.registers[cpu_state.decode.instruction_data.regA];
 
 				if (cpu_state.decode.stalling) {
 					cpu_state.decode.stalling = 0;
-					cpu_state.fetch.stalling = 0;
 					printf("CPU LOG :: Unstalling decode stage\r\n");
-					return 1;
 				}
 			}
 		} else {
@@ -211,28 +216,40 @@ int decode(void) {
 		}
 	}
 
-	if (old_cpu_state.decode.instruction_data.regB != 0xf) {
-		if (old_cpu_state.decode.instruction_data.regB < 8) {
-			if (old_cpu_state.register_locks[old_cpu_state.decode.instruction_data.regB]) {
+	if (cpu_state.decode.instruction_data.regB != 0xf) {
+		if (cpu_state.decode.instruction_data.regB < 8) {
+			if (old_cpu_state.register_locks[cpu_state.decode.instruction_data.regB]) {
 				cpu_state.decode.stalling = 1;
-				cpu_state.fetch.stalling = 1;
 
 				printf("CPU LOG :: Stalling at decode stage\r\n");
 
 				return 1;
 			} else {
-				cpu_state.decode.valB = old_cpu_state.registers[old_cpu_state.decode.instruction_data.regB];
+				cpu_state.decode.valB = old_cpu_state.registers[cpu_state.decode.instruction_data.regB];
 
 				if (cpu_state.decode.stalling) {
 					cpu_state.decode.stalling = 0;
-					cpu_state.fetch.stalling = 0;
 					printf("CPU LOG :: Unstalling decode stage\r\n");
-					return 1;
 				}
 			}
 		} else {
 			return -1;
 		}
+	}
+
+	switch (cpu_state.decode.instruction_data.icode) {
+		case 2: case 3:
+			cpu_state.register_locks[cpu_state.decode.instruction_data.regB] = 1;
+			break;
+		case 5:
+			cpu_state.register_locks[cpu_state.decode.instruction_data.regA] = 1;
+			break;
+		case 6:
+			cpu_state.register_locks[cpu_state.decode.instruction_data.regB] = 1;
+			break;
+		case 8: case 9: case 0xa: case 0xb:
+			cpu_state.register_locks[4] = 1;
+			break;
 	}
 
 	return 0;
@@ -263,12 +280,9 @@ static int check_flag(uint8_t flag, uint8_t cpu_zf, uint8_t cpu_sf, uint8_t cpu_
 
 // Execute
 int execute(void) {
-	// Input to next part of pipeline
-	cpu_state.memory = cpu_state.execute;
-
 	int do_write;
 
-	switch (old_cpu_state.execute.instruction_data.icode) {
+	switch (cpu_state.execute.instruction_data.icode) {
 		case 0: case 1:
 			break;
 		case 2:
@@ -311,8 +325,9 @@ int execute(void) {
 
 			if (cpu_state.execute.cnd < 0)
 				return -1;
-			else if (!cpu_state.execute.cnd)
+			else if (!cpu_state.execute.cnd) {
 				cpu_state.branch_mispredict = 1;
+			}
 
 			break;
 		case 8:
@@ -333,10 +348,7 @@ int execute(void) {
 }
 
 int memory(void) {
-	// Input to next part of pipeline
-	cpu_state.writeback = cpu_state.memory;
-
-	switch (old_cpu_state.memory.instruction_data.icode) {
+	switch (cpu_state.memory.instruction_data.icode) {
 		case 0: case 1: case 2: case 3:
 			break;
 		case 4:
@@ -379,7 +391,7 @@ int memory(void) {
 }
 
 int writeback(void) {
-	switch (old_cpu_state.writeback.instruction_data.icode) {
+	switch (cpu_state.writeback.instruction_data.icode) {
 		case 0:
 			cpu_state.halted = 1;
 			break;
@@ -407,6 +419,7 @@ int writeback(void) {
 			break;
 		case 0xa:
 			cpu_state.registers[4] = cpu_state.writeback.valE;
+			cpu_state.register_locks[4] = 0;
 			break;
 		case 0xb:
 			cpu_state.registers[4] = cpu_state.writeback.valE;
