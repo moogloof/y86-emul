@@ -36,8 +36,17 @@ int cycle(void) {
 	if (cpu_state.branch_mispredict) {
 		printf("CPU LOG :: Handling branch mispredict, bubbling fetch and decode, updating PC\r\n");
 		cpu_state.branch_mispredict = 0;
+
+		// Before bubbling, release used registers from decode
+		if (cpu_state.decode.instruction_data.regA < 8)
+			cpu_state.register_locks[cpu_state.decode.instruction_data.regA] = 0;
+		if (cpu_state.decode.instruction_data.regB < 8)
+			cpu_state.register_locks[cpu_state.decode.instruction_data.regB] = 0;
+
+		// Bubble states
 		cpu_state.fetch = bubble_state;
 		cpu_state.decode = bubble_state;
+
 		cpu_state.pc = cpu_state.execute.instruction_data.valP;
 	}
 
