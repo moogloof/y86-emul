@@ -80,6 +80,7 @@ int fetch(void) {
 	cpu_state.fetch.instruction_data.regB = 0xf;
 
 	cpu_state.fetch.instruction_data.valP = old_cpu_state.pc;
+	cpu_state.fetch.instruction_data.valC = 0;
 
 	switch (cpu_state.fetch.instruction_data.icode) {
 		case 0: case 1:
